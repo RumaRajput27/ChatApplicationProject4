@@ -3,62 +3,57 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 
+// Middleware to parse the body of POST requests
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve login page
+// Serve the login form at "/login"
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'login.html'));
+  res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Serve send message page
+// Serve the message form at "/"
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'message.html'));
+  res.sendFile(path.join(__dirname, 'message.html'));
 });
 
-// Serve contact us page
-app.get('/contactus', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'contactus.html'));
-});
-
-// Handle contact form submission
-app.post('/contactus', (req, res) => {
-    const { name, email } = req.body;
-    
-    // Log the details (or you could store it in a file/database)
-    console.log(`Received contact from: Name = ${name}, Email = ${email}`);
-    
-    // Redirect to the success page
-    res.redirect('/success');
-});
-
-// Serve success page after form submission
-app.get('/success', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'success.html'));
-});
-
-// Save message to file when submitted from main page
+// Handle the message form submission
 app.post('/send-message', (req, res) => {
-    const { username, message } = req.body;
+  const { username, message } = req.body;
 
-    const data = { username, message };
+  const data = {
+    username,
+    message
+  };
 
-    fs.appendFile(path.join(__dirname, 'messages.json'), JSON.stringify(data) + '\n', (err) => {
-        if (err) {
-            return res.status(500).send('Error saving message');
-        }
-        res.send('Message received and stored!');
-    });
+  // Append the data to the file
+  fs.appendFile('messages.json', JSON.stringify(data) + '\n', (err) => {
+    if (err) {
+      console.error('Error writing to file', err);
+      res.status(500).send('Error saving message');
+    } else {
+      res.send('Message received and stored!');
+    }
+  });
 });
 
-// Handle 404 errors
-app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, 'views', '404.html'));
+// Route to read messages from the file
+app.get('/messages', (req, res) => {
+  fs.readFile('messages.json', 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading file', err);
+      return res.status(500).send('Error reading messages');
+    }
+
+    // Split the file by new lines to get each message as JSON
+    const messages = data.split('\n').filter(line => line).map(JSON.parse);
+
+    res.json(messages); // Send the messages as JSON response
+  });
 });
 
 // Start the server
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
